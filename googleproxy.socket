@@ -1,0 +1,9 @@
+[Unit]
+Description=GOOGLE PROXY Service Sockets
+
+[Socket]
+ListenStream=127.0.0.1:80
+ListenStream=127.0.0.1:443
+
+[Install]
+WantedBy=sockets.target

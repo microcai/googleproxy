@@ -1,0 +1,8 @@
+[Unit]
+Description=GOOGLE PROXY server daemon
+
+[Service]
+ExecStart=@bindir@/googleproxy
+
+[Install]
+WantedBy=multi-user.target

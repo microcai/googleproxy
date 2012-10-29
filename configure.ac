@@ -42,6 +42,17 @@ BOOST_SYSTEM([s-mt])
 
 BOOST_ASIO()
 
+AC_ARG_WITH([systemdsystemunitdir],
+        AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
+        [], [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+
+AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
+
+if test "x$with_systemdsystemunitdir" != xno; then
+		 AC_CONFIG_FILES(googleproxy.service.in)
+fi
+AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])
+
 AC_DEFINE_UNQUOTED(GOOGLE_ADDRESS,"${googleaddress}",[the address of www.google.com])
 
 AC_CONFIG_FILES(Makefile src/Makefile)
