@@ -18,14 +18,13 @@
 namespace asio = boost::asio;
 
 typedef boost::shared_ptr<asio::ip::tcp::socket> socketptr;
+typedef boost::shared_ptr<boost::array<char,4096>> arraybuffer;
 
 static void splice_write_handler(
-	socketptr writesocket,
-	socketptr readsocket,
-	boost::shared_ptr<boost::array<char,4096>>  writebuffer,
-	boost::shared_ptr<boost::array<char,4096>>  readbuffer,
-	std::size_t bytes_transferred,          /* Number of bytes read.*/
-	const boost::system::error_code& error /* Result of operation.*/)
+	socketptr writesocket,socketptr readsocket,
+	arraybuffer writebuffer,arraybuffer readbuffer,
+	std::size_t bytes_transferred,
+	const boost::system::error_code& error)
 {
 	if(error){
 		//终止连接
@@ -33,11 +32,9 @@ static void splice_write_handler(
 }
 
 static void splice_read_handler(
-	socketptr readsocket,
-	socketptr writesocket,
-	boost::shared_ptr<boost::array<char,4096>>  readbuffer,
-	boost::shared_ptr<boost::array<char,4096>>  writebuffer,
-	std::size_t bytes_transferred,          /* Number of bytes read.*/
+	socketptr readsocket,socketptr writesocket,
+	arraybuffer  readbuffer,arraybuffer  writebuffer,
+	std::size_t bytes_transferred,      /* Number of bytes read.*/
 	const boost::system::error_code& error /* Result of operation.*/)
 {
 	std::swap(readbuffer,writebuffer);
@@ -62,12 +59,10 @@ static void splicer_remote_connected(
 {
 	if (!error){
 		// start reading for both side
-		boost::shared_ptr<boost::array<char,4096>>
-					read_data_remote(new boost::array<char,4096>()),
+		arraybuffer read_data_remote(new boost::array<char,4096>()),
 					read_data_client(new boost::array<char,4096>());
 
-		boost::shared_ptr<boost::array<char,4096>>
-					write_data_remote(new boost::array<char,4096>()),
+		arraybuffer write_data_remote(new boost::array<char,4096>()),
 					write_data_client(new boost::array<char,4096>());
 
 		remotesocket->async_read_some(asio::buffer(*read_data_remote,read_data_remote->size()),
