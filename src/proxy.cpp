@@ -42,10 +42,10 @@ static void splice_read_handler(
 	//std::swap(readbuffer,writebuffer);
 	if(!error){
 		readsocket->async_read_some(asio::buffer(*readbuffer),
-			boost::bind(splice_read_handler,readsocket,writesocket,readbuffer,writebuffer,_2,_1)
+			boost::bind(splice_read_handler,readsocket,writesocket,readbuffer,writebuffer,asio::placeholders::bytes_transferred,asio::placeholders::error)
 		);
 		writesocket->async_write_some(asio::buffer(*writebuffer,bytes_transferred),
-			boost::bind(splice_write_handler,writesocket,readsocket,writebuffer,readbuffer,_2,_1)
+			boost::bind(splice_write_handler,writesocket,readsocket,writebuffer,readbuffer,asio::placeholders::bytes_transferred,asio::placeholders::error)
 		);
 	}else{
 		//终止连接
@@ -70,16 +70,16 @@ static void splicer_remote_connected(
 						remotesocket,
 						clientsocket,
 						read_data_remote,write_data_remote,
-						asio::placeholders::bytes_transferred(),
-						asio::placeholders::error()));
+						asio::placeholders::bytes_transferred,
+						asio::placeholders::error));
 
 		clientsocket->async_read_some(asio::buffer(*read_data_client,read_data_client->size()),
 			boost::bind(splice_read_handler,
 						clientsocket,
 						remotesocket,
 						read_data_client,write_data_client,
-						asio::placeholders::bytes_transferred(),
-						asio::placeholders::error()));
+						asio::placeholders::bytes_transferred,
+						asio::placeholders::error));
 	}
 }
 
@@ -113,7 +113,7 @@ static void splicer_accept_handler(asio::io_service & service,asio::ip::tcp::acc
 	httpsacceptor.async_accept(*newclientsocket,
 			boost::bind(splicer_accept_handler,
 						boost::ref(service),boost::ref(httpsacceptor),
-						newclientsocket,asio::placeholders::error(),
+						newclientsocket,asio::placeholders::error),
 						remote_splicer
 			)
 	);
@@ -190,15 +190,15 @@ static void http_accept_handler(asio::io_service & service,asio::ip::tcp::accept
 													boost::ref(service),
 													boost::ref(httpacceptor),
 													clientsocket,buffer,
-													asio::placeholders::bytes_transferred(),
-													asio::placeholders::error()
+													asio::placeholders::bytes_transferred,
+													asio::placeholders::error
 										)
 		);
 	}
 
 	// again
 	socketptr newclientsocket( new asio::ip::tcp::socket(service));
-	httpacceptor.async_accept(*newclientsocket,boost::bind(http_accept_handler,boost::ref(service),boost::ref(httpacceptor),newclientsocket,_1));
+	httpacceptor.async_accept(*newclientsocket,boost::bind(http_accept_handler,boost::ref(service),boost::ref(httpacceptor),newclientsocket,asio::placeholders::error));
 }
 
 int main()
@@ -231,7 +231,7 @@ int main()
 						boost::ref(service),
 						boost::ref(httpsacceptor),
 						httpsclientsocket,
-						asio::placeholders::error(),
+						asio::placeholders::error,
 						asio::ip::tcp::endpoint(asio::ip::address::from_string(GOOGLE_ADDRESS),443)
 			)
 	);
@@ -242,7 +242,7 @@ int main()
 						boost::ref(service),
 						boost::ref(httpacceptor),
 						httpclientsocket,
-						asio::placeholders::error()
+						asio::placeholders::error
 			)
 	);
 
