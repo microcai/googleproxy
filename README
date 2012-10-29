@@ -1,1 +1,19 @@
-Sample readme file for googleproxy project.
+
+add 127.0.0.1 www.google.com to  /etc/hosts
+
+run googleproxy 
+
+then you will default to use https . enjoy :)
+
+
+build dep:
+	  if you checkout on git, you'll need automake/autoconf/libtool/boost-m4
+	  
+	  run libtoolize && autoreconf 
+	  
+	  now start build
+	  
+build dep: need boost. that's all.
+	  
+	  ./configure && make && make install
+	  
