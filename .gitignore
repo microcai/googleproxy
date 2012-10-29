@@ -38,3 +38,5 @@ libtool
 ltmain*
 
 
+googleproxy.service
+googleproxy.service.in

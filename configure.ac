@@ -26,8 +26,8 @@ AC_CANONICAL_SYSTEM
 AM_INIT_AUTOMAKE()
 
 AC_PROG_CXX
+PKG_PROG_PKG_CONFIG
 
-AC_CHECK_LIB(systemd-daemon,sd_listen_fds,)
 
 AC_LANG(C++)
 
@@ -48,9 +48,11 @@ AC_ARG_WITH([systemdsystemunitdir],
 
 AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
 
-if test "x$with_systemdsystemunitdir" != xno; then
+if [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ]; then
 		 AC_CONFIG_FILES(googleproxy.service.in)
+		 AC_CHECK_LIB(systemd-daemon,sd_listen_fds,)
 fi
+
 AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])
 
 AC_DEFINE_UNQUOTED(GOOGLE_ADDRESS,"${googleaddress}",[the address of www.google.com])
