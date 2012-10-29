@@ -50,7 +50,7 @@ AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
 
 if [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ]; then
 		 AC_CONFIG_FILES(googleproxy.service.in)
-		 AC_CHECK_LIB(systemd-daemon,sd_listen_fds,)
+		 AC_DEFINE([HAVE_SYSTEMD],[1],[use systemd])
 fi
 
 AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])

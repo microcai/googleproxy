@@ -13,7 +13,7 @@
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
 
-#include <systemd/sd-daemon.h>
+#include "sd-daemon.h"
 
 namespace asio = boost::asio;
 
@@ -211,18 +211,22 @@ int main()
 	asio::io_service service;
 
 	asio::ip::tcp::acceptor httpacceptor = [&]{
+#if HAVE_SYSTEMD
 		if(sd_listen_fds(0)>0){			
 			return asio::ip::tcp::acceptor(service,asio::ip::tcp::v6(),SD_LISTEN_FDS_START);
 		}
 		else
+#endif
 			return asio::ip::tcp::acceptor(service,asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 80));
 	}();
 
 	asio::ip::tcp::acceptor httpsacceptor = [&]{
+#if HAVE_SYSTEMD
 		if(sd_listen_fds(0)>0){
 			return asio::ip::tcp::acceptor(service,asio::ip::tcp::v6(),SD_LISTEN_FDS_START+1);
 		}
 		else
+#endif
 			return asio::ip::tcp::acceptor(service,asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 443));
 	}();
 
