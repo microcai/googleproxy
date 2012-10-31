@@ -1,5 +1,5 @@
 
-== An example to tell you how to write C++ as script ==
+# An example to tell you how to write C++ as script
 
 rule 1: don't design class
 
@@ -9,7 +9,7 @@ aka: rule 2: write down the idea and let the compiler optimize
 rule 3: use boost
 
 
-== real readme for googleproxy ==
+# real readme for googleproxy ==
 
 why I write this:
 	force the browser to use https://
