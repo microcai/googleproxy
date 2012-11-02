@@ -12,10 +12,13 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include <boost/format.hpp>
+#include <boost/program_options.hpp>
 
 #include "sd-daemon.h"
 
 namespace asio = boost::asio;
+namespace po = boost::program_options;
 
 typedef boost::shared_ptr<asio::ip::tcp::socket> socketptr;
 typedef boost::shared_ptr<boost::array<char,4096>> arraybuffer;
@@ -113,7 +116,7 @@ static void splicer_accept_handler(asio::io_service & service,asio::ip::tcp::acc
 	httpsacceptor.async_accept(*newclientsocket,
 			boost::bind(splicer_accept_handler,
 						boost::ref(service),boost::ref(httpsacceptor),
-						newclientsocket,asio::placeholders::error),
+						newclientsocket,asio::placeholders::error,
 						remote_splicer
 			)
 	);
@@ -127,25 +130,22 @@ static void http_read_request_handler(
 	std::size_t bytes_transferred,          /* Number of bytes read.*/
 	const boost::system::error_code& error /* Result of operation.*/)
 {
-	boost::scoped_array<char> url(new char[8192]);
+	boost::array<char,8192> url;
 
 	/* 解析 url */
-	sscanf(buffer->cbegin(),"GET /%[^ ]",url.get());
+	sscanf(buffer->cbegin(),std::string(boost::str(boost::format("GET /%%%d[^ ]") % url.size())).c_str(),url.c_array());
 
-	puts(url.get());
+	puts(url.cbegin());
 
-	if(strncmp(url.get(),"imgres?",7)){		
+	if(strncmp(url.cbegin(),"imgres?",7)){
 		const char * page_template =
 				"HTTP/1.1 301 Moved Permanently\r\n"
 				"Location: https://www.google.com/%s\r\n"
 				"\r\n\r\n";
 
-		boost::array<char,8000> page;
-
-		size_t sizepage = snprintf(page.begin(),page.size(), page_template,url.get());
-
+		std::string	page = boost::str( boost::format(page_template) % url.c_array() );
 		//写入
-		clientsocket->async_write_some(asio::buffer(page,sizepage),
+		clientsocket->async_write_some(asio::buffer(page.data(),page.length()),
 					[clientsocket](const boost::system::error_code& error,std::size_t bytes_transferred){
 						// clean up
 						clientsocket->close();
@@ -201,10 +201,28 @@ static void http_accept_handler(asio::io_service & service,asio::ip::tcp::accept
 	httpacceptor.async_accept(*newclientsocket,boost::bind(http_accept_handler,boost::ref(service),boost::ref(httpacceptor),newclientsocket,asio::placeholders::error));
 }
 
-int main()
+int main(int argc,char *argv[])
 {
 	asio::io_service service;
 
+	uint baseport = 0;
+	{
+	po::options_description desc("Allowed options");
+	
+	desc.add_options()
+		("help", "produce help message")
+		("baseport", po::value<uint>(&baseport)->default_value(0), "set baseport for http(baseport+80) and https(baseport+443)")
+	;
+
+	po::variables_map vm;
+	po::store(po::parse_command_line(argc, argv, desc), vm);
+	po::notify(vm);
+
+	if (vm.count("help")) {
+		std::cout << desc << "\n";
+		return 1;
+	}
+	}
 	asio::ip::tcp::acceptor httpacceptor = [&]{
 #if HAVE_SYSTEMD
 		if(sd_listen_fds(0)>0){			
@@ -212,7 +230,7 @@ int main()
 		}
 		else
 #endif
-			return asio::ip::tcp::acceptor(service,asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 80));
+			return asio::ip::tcp::acceptor(service,asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 80 + baseport));
 	}();
 
 	asio::ip::tcp::acceptor httpsacceptor = [&]{
@@ -222,7 +240,7 @@ int main()
 		}
 		else
 #endif
-			return asio::ip::tcp::acceptor(service,asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 443));
+			return asio::ip::tcp::acceptor(service,asio::ip::tcp::endpoint(asio::ip::tcp::v6(), 443 + baseport));
 	}();
 
 	socketptr httpsclientsocket( new asio::ip::tcp::socket(service));
