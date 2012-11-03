@@ -7,17 +7,18 @@
 #include <config.h>
 
 #include <string.h>
-#include <boost/scoped_array.hpp>
 #include <boost/array.hpp>
-#include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/function.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
+#include <boost/bind.hpp>
+
+#define ASIO_DISABLE_THREADS
+#include <asio.hpp>
 
 #include "sd-daemon.h"
 
-namespace asio = boost::asio;
+typedef	asio::error_code	error_code;
+
 namespace po = boost::program_options;
 
 typedef boost::shared_ptr<asio::ip::tcp::socket> socketptr;
@@ -27,7 +28,7 @@ static void splice_write_handler(
 	socketptr writesocket,socketptr readsocket,
 	arraybuffer writebuffer,arraybuffer readbuffer,
 	std::size_t bytes_transferred,
-	const boost::system::error_code& error)
+	const error_code& error)
 {
 	if(error){
 		//终止连接
@@ -38,17 +39,17 @@ static void splice_read_handler(
 	socketptr readsocket,socketptr writesocket,
 	arraybuffer  readbuffer,arraybuffer  writebuffer,
 	std::size_t bytes_transferred,      /* Number of bytes read.*/
-	const boost::system::error_code& error /* Result of operation.*/)
+	const error_code& error /* Result of operation.*/)
 {
 	std::swap(readbuffer,writebuffer);
 	//readbuffer.swap(writebuffer);
 	//std::swap(readbuffer,writebuffer);
 	if(!error){
 		readsocket->async_read_some(asio::buffer(*readbuffer),
-			boost::bind(splice_read_handler,readsocket,writesocket,readbuffer,writebuffer,asio::placeholders::bytes_transferred,asio::placeholders::error)
+			boost::bind(&splice_read_handler,readsocket,writesocket,readbuffer,writebuffer,asio::placeholders::bytes_transferred,asio::placeholders::error)
 		);
 		writesocket->async_write_some(asio::buffer(*writebuffer,bytes_transferred),
-			boost::bind(splice_write_handler,writesocket,readsocket,writebuffer,readbuffer,asio::placeholders::bytes_transferred,asio::placeholders::error)
+			boost::bind(&splice_write_handler,writesocket,readsocket,writebuffer,readbuffer,asio::placeholders::bytes_transferred,asio::placeholders::error)
 		);
 	}else{
 		//终止连接
@@ -58,7 +59,7 @@ static void splice_read_handler(
 static void splicer_remote_connected(
 	socketptr remotesocket,
 	socketptr clientsocket,
-	const boost::system::error_code& error)
+	const error_code& error)
 {
 	if (!error){
 		// start reading for both side
@@ -88,7 +89,7 @@ static void splicer_remote_connected(
 
 static void splicer_accept_handler(asio::io_service & service,asio::ip::tcp::acceptor & httpsacceptor,
 								socketptr clientsocket,
-								const boost::system::error_code& error,
+								const error_code& error,
 								asio::ip::tcp::endpoint remote_splicer
 								)
 {
@@ -104,7 +105,7 @@ static void splicer_accept_handler(asio::io_service & service,asio::ip::tcp::acc
 		std::cout << "connecting https://www.google.com/" << std::endl;
 
 		togoogle->async_connect(remote_splicer,
-				[togoogle,clientsocket](const boost::system::error_code& error){
+				[togoogle,clientsocket](const error_code& error){
 					splicer_remote_connected(togoogle,clientsocket,error);
 					std::cout << "https://www.google.com/ connected" << std::endl;
 				}				
@@ -128,7 +129,7 @@ static void http_read_request_handler(
 	socketptr clientsocket,
 	boost::shared_ptr<boost::array<char,1500>>  buffer,
 	std::size_t bytes_transferred,          /* Number of bytes read.*/
-	const boost::system::error_code& error /* Result of operation.*/)
+	const error_code& error /* Result of operation.*/)
 {
 	boost::array<char,8192> url;
 
@@ -146,7 +147,7 @@ static void http_read_request_handler(
 		std::string	page = boost::str( boost::format(page_template) % url.c_array() );
 		//写入
 		clientsocket->async_write_some(asio::buffer(page.data(),page.length()),
-					[clientsocket](const boost::system::error_code& error,std::size_t bytes_transferred){
+					[clientsocket](const error_code& error,std::size_t bytes_transferred){
 						// clean up
 						clientsocket->close();
 					});
@@ -158,11 +159,11 @@ static void http_read_request_handler(
 
 		remotesocket->async_connect(
 			asio::ip::tcp::endpoint(asio::ip::address::from_string(GOOGLE_ADDRESS),80),
-			[remotesocket,clientsocket,buffer,bytes_transferred](const boost::system::error_code& error){
+			[remotesocket,clientsocket,buffer,bytes_transferred](const error_code& error){
 				if (!error){
 					remotesocket->async_write_some(
 						asio::buffer(*buffer,bytes_transferred),
-						[remotesocket,clientsocket](const boost::system::error_code& error,std::size_t bytes_transferred)
+						[remotesocket,clientsocket](const error_code& error,std::size_t bytes_transferred)
 						{
 							splicer_remote_connected(remotesocket,clientsocket,error);
 							std::cout << "http://www.google.com/imgres? connected " << std::endl;
@@ -176,7 +177,7 @@ static void http_read_request_handler(
 
 static void http_accept_handler(asio::io_service & service,asio::ip::tcp::acceptor & httpacceptor,
 								socketptr clientsocket,
-								const boost::system::error_code& error)
+								const error_code& error)
 {
 	if (!error)
 	{
@@ -206,27 +207,14 @@ int main(int argc,char *argv[])
 	asio::io_service service;
 
 	uint baseport = 0;
-	{
-	po::options_description desc("Allowed options");
-	
-	desc.add_options()
-		("help", "produce help message")
-		("baseport", po::value<uint>(&baseport)->default_value(0), "set baseport for http(baseport+80) and https(baseport+443)")
-	;
-
-	po::variables_map vm;
-	po::store(po::parse_command_line(argc, argv, desc), vm);
-	po::notify(vm);
-
-	if (vm.count("help")) {
-		std::cout << desc << "\n";
-		return 1;
+	if(argc == 2){
+		baseport = boost::lexical_cast<uint>(argv[1]);
 	}
-	}
+
 	asio::ip::tcp::acceptor httpacceptor = [&]{
 #if HAVE_SYSTEMD
 		if(sd_listen_fds(0)>0){			
-			return asio::ip::tcp::acceptor(service,asio::ip::tcp::v6(),SD_LISTEN_FDS_START);
+			return asio::ip::tcp::acceptor(service,asio::ip::tcp::v6(),(asio::ip::tcp::acceptor::native_type)SD_LISTEN_FDS_START);
 		}
 		else
 #endif
@@ -236,7 +224,7 @@ int main(int argc,char *argv[])
 	asio::ip::tcp::acceptor httpsacceptor = [&]{
 #if HAVE_SYSTEMD
 		if(sd_listen_fds(0)>0){
-			return asio::ip::tcp::acceptor(service,asio::ip::tcp::v6(),SD_LISTEN_FDS_START+1);
+			return asio::ip::tcp::acceptor(service,asio::ip::tcp::v6(),(asio::ip::tcp::acceptor::native_type)SD_LISTEN_FDS_START+1);
 		}
 		else
 #endif

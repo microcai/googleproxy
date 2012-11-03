@@ -37,11 +37,6 @@ AX_CHECK_COMPILE_FLAG([-fpermissive],[CXXFLAGS="$CXXFLAGS -fpermissive"],[AC_MSG
 AC_ARG_WITH(googleaddress,[helpstring],[googleaddress=$withval],[googleaddress="74.125.71.94"])
 
 BOOST_REQUIRE(1.48)
-BOOST_STATIC()
-
-BOOST_SYSTEM([s])
-BOOST_ASIO()
-BOOST_PROGRAM_OPTIONS([s])
 
 AC_ARG_WITH([systemdsystemunitdir],
         AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
