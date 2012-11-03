@@ -1,5 +1,5 @@
 # find . -name "*.*pp" | sed -e 's/^\.\///' | sed -e 's/^.*$/  & \\/' | sort
-nobase_include_HEADERS = \
+EXTRA_DIST = \
 	asio/basic_datagram_socket.hpp \
 	asio/basic_deadline_timer.hpp \
 	asio/basic_io_object.hpp \

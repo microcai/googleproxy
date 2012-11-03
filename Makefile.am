@@ -1,7 +1,8 @@
+AUTOMAKE_OPTIONS = foreign dist-bzip2
 
 ACLOCAL_AMFLAGS = -I m4
 
-SUBDIRS=src
+SUBDIRS=asio-1.5.3 src
 
 EXTRA_DIST=googleproxy.socket googleproxy.service.in.in
 

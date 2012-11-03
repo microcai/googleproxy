@@ -53,6 +53,6 @@ AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_sy
 
 AC_DEFINE_UNQUOTED(GOOGLE_ADDRESS,"${googleaddress}",[the address of www.google.com])
 
-AC_CONFIG_FILES(Makefile src/Makefile)
+AC_CONFIG_FILES(Makefile src/Makefile asio-1.5.3/Makefile asio-1.5.3/include/Makefile)
 AC_OUTPUT
 
