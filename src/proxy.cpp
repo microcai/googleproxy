@@ -5,21 +5,32 @@
  *      Author: cai
  */
 #include <config.h>
-
+#include <unistd.h>
 #include <string.h>
 #include <boost/array.hpp>
 #include <boost/format.hpp>
 #include <boost/program_options.hpp>
 #include <boost/bind.hpp>
 
-#define ASIO_DISABLE_THREADS
+#ifdef ENABLE_THREAD
+#	include <boost/thread.hpp>
+#	undef ASIO_DISABLE_THREADS
+#else
+#	define ASIO_DISABLE_THREADS
+#endif
+
+//#define USE_BOOST_ASIO
+
+#ifdef USE_BOOST_ASIO
+#include <boost/asio.hpp>
+typedef	boost::system::error_code error_code;
+namespace asio = boost::asio;
+#else
 #include <asio.hpp>
+typedef	asio::error_code	error_code;
+#endif
 
 #include "sd-daemon.h"
-
-typedef	asio::error_code	error_code;
-
-namespace po = boost::program_options;
 
 typedef boost::shared_ptr<asio::ip::tcp::socket> socketptr;
 typedef boost::shared_ptr<boost::array<char,4096>> arraybuffer;
@@ -186,7 +197,7 @@ static void http_accept_handler(asio::io_service & service,asio::ip::tcp::accept
 
 		boost::shared_ptr<boost::array<char,1500>>  buffer(new boost::array<char,1500>());
 
-		clientsocket->async_read_some(asio::buffer(*buffer),
+		clientsocket->async_read_some(asio::buffer(*buffer,buffer->size()),
 										boost::bind(http_read_request_handler,
 													boost::ref(service),
 													boost::ref(httpacceptor),
@@ -204,12 +215,12 @@ static void http_accept_handler(asio::io_service & service,asio::ip::tcp::accept
 
 int main(int argc,char *argv[])
 {
-	asio::io_service service;
-
 	uint baseport = 0;
 	if(argc == 2){
 		baseport = boost::lexical_cast<uint>(argv[1]);
 	}
+
+	asio::io_service service;
 
 	asio::ip::tcp::acceptor httpacceptor = [&]{
 #if HAVE_SYSTEMD
@@ -252,5 +263,13 @@ int main(int argc,char *argv[])
 			)
 	);
 
+#ifdef ENABLE_THREAD
+	int numofcpu = sysconf(_SC_NPROCESSORS_CONF);
+	if(numofcpu > 1){
+		std::cout << "cpu number is " << numofcpu << ", so run that much thread" << std::endl;
+		for(int i = 0 ; i < numofcpu - 1; i++)
+			boost::thread(boost::bind(&asio::io_service::run,&service)).detach();
+	}
+#endif
 	service.run();
 }

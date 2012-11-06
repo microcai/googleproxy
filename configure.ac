@@ -17,7 +17,7 @@ AS_VAR_POPDEF([CACHEVAR])dnl
 ])dnl AX_CHECK_COMPILE_FLAGS
 
 AC_PREREQ(2.59)
-AC_INIT(googleproxy, 1.0)
+AC_INIT(googleproxy, 2.0)
 LT_INIT()
 
 AC_CONFIG_HEADERS(config.h)
@@ -40,7 +40,9 @@ BOOST_REQUIRE(1.48)
 
 AC_ARG_WITH([systemdsystemunitdir],
         AS_HELP_STRING([--with-systemdsystemunitdir=DIR], [Directory for systemd service files]),
-        [], [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+        [with_systemdsystemunitdir=$withval],
+        [with_systemdsystemunitdir=$($PKG_CONFIG --variable=systemdsystemunitdir systemd)]
+    )
 
 AC_SUBST([systemdsystemunitdir], [$with_systemdsystemunitdir])
 
@@ -50,6 +52,22 @@ if [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno
 fi
 
 AM_CONDITIONAL(HAVE_SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])
+
+AC_ARG_ENABLE([threads],
+		AS_HELP_STRING([--enable-threads], [enable multithread support]),
+		[ case "${enableval}" in
+			yes) enable_threads=yes ;;
+			no)  enable_threads=no ;;
+			*)   AC_MSG_ERROR(bad value ${enableval} for --enable-threads) ;;
+		esac],
+		[enable_threads="no"]
+	)
+
+if [test -n "${enable_threads}" -a "x${enable_threads}" != xno ]; then
+	AC_DEFINE([ENABLE_THREAD],[1],[use thread])
+
+	BOOST_THREADS([s])
+fi
 
 AC_DEFINE_UNQUOTED(GOOGLE_ADDRESS,"${googleaddress}",[the address of www.google.com])
 

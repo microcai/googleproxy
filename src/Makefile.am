@@ -6,3 +6,7 @@ googleproxy_SOURCES=proxy.cpp sd-daemon.h
 if HAVE_SYSTEMD
    googleproxy_SOURCES+=sd-daemon.c
 endif
+
+googleproxy_LDFLAGS=${BOOST_THREAD_LDFLAGS}
+
+googleproxy_LDADD=${BOOST_THREAD_LIBS}
