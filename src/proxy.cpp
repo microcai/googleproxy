@@ -4,6 +4,7 @@
  *  Created on: 2012-8-10
  *      Author: cai
  */
+
 #include <config.h>
 #include <unistd.h>
 #include <string.h>
@@ -213,15 +214,20 @@ static void http_accept_handler(asio::io_service & service,asio::ip::tcp::accept
 	httpacceptor.async_accept(*newclientsocket,boost::bind(http_accept_handler,boost::ref(service),boost::ref(httpacceptor),newclientsocket,asio::placeholders::error));
 }
 
+/// main>
 int main(int argc,char *argv[])
 {
 	uint baseport = 0;
+	///  argc?baseport:buildport
 	if(argc == 2){
+		/// baseport
 		baseport = boost::lexical_cast<uint>(argv[1]);
+		/// >buildport
 	}
 
 	asio::io_service service;
 
+	/// buildport
 	asio::ip::tcp::acceptor httpacceptor = [&]{
 #if HAVE_SYSTEMD
 		if(sd_listen_fds(0)>0){			
@@ -263,12 +269,13 @@ int main(int argc,char *argv[])
 			)
 	);
 
+	/// getnumofcpu
 #ifdef ENABLE_THREAD
-	int numofcpu = sysconf(_SC_NPROCESSORS_CONF);
-	if(numofcpu > 1){
-		std::cout << "cpu number is " << numofcpu << ", so run that much thread" << std::endl;
-		for(int i = 0 ; i < numofcpu - 1; i++)
+	if(boost::thread::hardware_concurrency() > 1){
+		std::cout << "cpu number is " << boost::thread::hardware_concurrency() << ", so run that much thread" << std::endl;
+		for(int i = 0 ; i < boost::thread::hardware_concurrency() - 1; i++){
 			boost::thread(boost::bind(&asio::io_service::run,&service)).detach();
+		}
 	}
 #endif
 	service.run();
